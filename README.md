@@ -1,4 +1,4 @@
-# StringCounter: A Expended Solution to HackerRank Problem Count Strings
+# RegexCounter: A Expended Solution to HackerRank Problem Count Strings
 
 Original Problem: <https://www.hackerrank.com/challenges/count-strings/problem>
 
