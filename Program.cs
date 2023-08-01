@@ -924,8 +924,8 @@ class Solution
     public static void Main()
     {
         var result = Result.CountStrings(
-            "((((((adc|sss))))))",
-            10
+            "(((a(ba))(b*))|(((b|a)|(aa))((b((b|((b*)|(((((b*)a)b)*)*)))*))|(((a(b*))a)|(b|a)))))",
+            43625841
         );
         Console.WriteLine(result);
     }
