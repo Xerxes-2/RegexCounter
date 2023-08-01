@@ -18,7 +18,7 @@ Original Problem: <https://www.hackerrank.com/challenges/count-strings/problem>
 
 ### DFA graph
 
-```graphviz
+```dot
 digraph DFA {
   rankdir=LR;
   node [shape=point]; start;
