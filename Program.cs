@@ -923,10 +923,14 @@ class Solution
 {
     public static void Main()
     {
+        var stopwatch = new System.Diagnostics.Stopwatch();
+        stopwatch.Start();
         var result = Result.CountStrings(
             "(((a(ba))(b*))|(((b|a)|(aa))((b((b|((b*)|(((((b*)a)b)*)*)))*))|(((a(b*))a)|(b|a)))))",
             43625841
         );
+        stopwatch.Stop();
+        Console.WriteLine(stopwatch.ElapsedMilliseconds);
         Console.WriteLine(result);
     }
 }
