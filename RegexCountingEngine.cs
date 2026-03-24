@@ -112,4 +112,35 @@ class RegexCountingEngine
         }
         return (int)(count % MOD);
     }
+
+    public static int CountMatrix(DFA dfa, int length)
+    {
+        var numbers = dfa.NumberStates();
+        var allStates = numbers.OrderBy(pair => pair.Value).Select(pair => pair.Key).ToArray();
+        var acceptStateIndexes = allStates
+            .Where(state => state.IsAcceptState)
+            .Select(state => numbers[state])
+            .ToArray();
+        ulong[][] transitionMatrix = new ulong[allStates.Length][];
+        for (int i = 0; i < allStates.Length; i++)
+        {
+            transitionMatrix[i] = new ulong[allStates.Length];
+            var state = allStates[i];
+            foreach (var symbol in dfa.Alphabet.Symbols)
+            {
+                if (state.Transitions.TryGetValue(symbol, out var nextState))
+                {
+                    transitionMatrix[i][numbers[nextState]]++;
+                }
+            }
+        }
+
+        var resultMatrix = FastMatrixExponentiation(transitionMatrix, length);
+        ulong count = 0;
+        foreach (var index in acceptStateIndexes)
+        {
+            count += resultMatrix[0][index];
+        }
+        return (int)(count % MOD);
+    }
 }

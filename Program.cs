@@ -468,6 +468,21 @@ class Parser(string r)
     private int i = 0;
     private char Cur => r.Length > i ? r[i] : '\0';
 
+    private static readonly Dictionary<char, char[]> MetaCharacters = new()
+    {
+        ['d'] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        ['l'] = Enumerable.Range('a', 26).Select(value => (char)value).ToArray(),
+        ['u'] = Enumerable.Range('A', 26).Select(value => (char)value).ToArray(),
+        ['w'] = Enumerable
+            .Range('a', 26)
+            .Concat(Enumerable.Range('A', 26))
+            .Concat(Enumerable.Range('0', 10))
+            .Select(value => (char)value)
+            .Append('_')
+            .ToArray(),
+        ['s'] = [' ', '\t', '\n', '\r'],
+    };
+
     private void Match(char ch)
     {
         if (Cur == ch)
@@ -490,11 +505,70 @@ class Parser(string r)
         return regex;
     }
 
-    public Regex ParseLiteral()
+    public Regex ParseAtom()
     {
+        if (Cur == '(')
+        {
+            return ParseParen();
+        }
+
+        return ParseLiteralOrMeta();
+    }
+
+    public Regex ParseLiteralOrMeta()
+    {
+        if (Cur == '\0')
+        {
+            throw new Exception($"Unexpected end of input at position {i}");
+        }
+
+        if (Cur == '\\')
+        {
+            return ParseEscape();
+        }
+
+        if (Cur is '|' or ')' or '*' or '+' or '?')
+        {
+            throw new Exception($"Unexpected token '{Cur}' at position {i}");
+        }
+
         var ch = Cur;
         i++;
         return new Literal(ch);
+    }
+
+    private Regex ParseEscape()
+    {
+        Match('\\');
+        if (Cur == '\0')
+        {
+            throw new Exception($"Unexpected end of input at position {i}");
+        }
+
+        var escapedChar = Cur;
+        i++;
+
+        if (MetaCharacters.TryGetValue(escapedChar, out var expandedSymbols))
+        {
+            return BuildUnion(expandedSymbols);
+        }
+
+        return new Literal(escapedChar);
+    }
+
+    private static Regex BuildUnion(IReadOnlyList<char> symbols)
+    {
+        if (symbols.Count == 0)
+        {
+            throw new ArgumentException("Meta character expansion cannot be empty.");
+        }
+
+        Regex regex = new Literal(symbols[0]);
+        for (var j = 1; j < symbols.Count; j++)
+        {
+            regex = new Pipe(regex, new Literal(symbols[j]));
+        }
+        return regex;
     }
 
     public Regex ParseParen()
@@ -507,7 +581,7 @@ class Parser(string r)
 
     public Regex ParseUnary()
     {
-        var regex = Cur == '(' ? ParseParen() : ParseLiteral();
+        var regex = ParseAtom();
         while (Cur == '*' || Cur == '+' || Cur == '?')
         {
             switch (Cur)
@@ -586,7 +660,37 @@ class Solution
             stopwatch.Stop();
             Console.WriteLine($"ElapsedMs: {stopwatch.ElapsedMilliseconds}");
             Console.WriteLine($"Count: {result}");
-            Console.WriteLine($"States: NFA={pipeline.NfaStateCount}, DFA={pipeline.DfaStateCount}, MinDFA={pipeline.MinDfaStateCount}");
+            Console.WriteLine(
+                $"States: NFA={pipeline.NfaStateCount}, DFA={pipeline.DfaStateCount}, MinDFA={pipeline.MinDfaStateCount}"
+            );
+            if (options.Benchmark)
+            {
+                var dfaBenchmark = RegexCountingBenchmarks.BenchmarkDfaEndToEnd(
+                    options.Regex,
+                    options.Length,
+                    options.BenchmarkIterations
+                );
+                var minDfaBenchmark = RegexCountingBenchmarks.BenchmarkMinDfaEndToEnd(
+                    options.Regex,
+                    options.Length,
+                    options.BenchmarkIterations
+                );
+                Console.WriteLine(
+                    $"BenchmarkIterations: {options.BenchmarkIterations}"
+                );
+                Console.WriteLine(
+                    $"Benchmark DFA E2E: count={dfaBenchmark.Count}, totalMs={dfaBenchmark.ElapsedMilliseconds:F3}, avgMs={dfaBenchmark.AverageMilliseconds:F4}"
+                );
+                Console.WriteLine(
+                    $"Benchmark MinDFA E2E: count={minDfaBenchmark.Count}, totalMs={minDfaBenchmark.ElapsedMilliseconds:F3}, avgMs={minDfaBenchmark.AverageMilliseconds:F4}"
+                );
+                if (minDfaBenchmark.ElapsedMilliseconds > 0)
+                {
+                    Console.WriteLine(
+                        $"Benchmark E2E Speedup: {dfaBenchmark.ElapsedMilliseconds / minDfaBenchmark.ElapsedMilliseconds:F2}x"
+                    );
+                }
+            }
         }
         catch (Exception ex)
         {

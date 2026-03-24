@@ -3,6 +3,8 @@ sealed class AppOptions
     public required string Regex { get; init; }
     public required int Length { get; init; }
     public required HashSet<string> DrawTargets { get; init; }
+    public required bool Benchmark { get; init; }
+    public required int BenchmarkIterations { get; init; }
 }
 
 static class CommandLine
@@ -19,9 +21,30 @@ static class CommandLine
         var validTargets = new HashSet<string>(validDrawTargets, StringComparer.OrdinalIgnoreCase);
         var drawTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var positionals = new List<string>();
+        var benchmark = false;
+        var benchmarkIterations = 20;
 
         for (var i = 0; i < args.Length; i++)
         {
+            if (string.Equals(args[i], "--benchmark", StringComparison.OrdinalIgnoreCase))
+            {
+                benchmark = true;
+                continue;
+            }
+
+            if (string.Equals(args[i], "--benchmark-iterations", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 >= args.Length || !int.TryParse(args[++i], out benchmarkIterations))
+                {
+                    throw new ArgumentException("Missing or invalid value for --benchmark-iterations.");
+                }
+                if (benchmarkIterations <= 0)
+                {
+                    throw new ArgumentException("--benchmark-iterations must be positive.");
+                }
+                continue;
+            }
+
             if (string.Equals(args[i], "--draw", StringComparison.OrdinalIgnoreCase))
             {
                 if (i + 1 >= args.Length)
@@ -52,7 +75,7 @@ static class CommandLine
         if (positionals.Count > 2)
         {
             throw new ArgumentException(
-                "Usage: dotnet run -- [--draw nfa,dfa,minDfa] [regex] [length]"
+                "Usage: dotnet run -- [--draw nfa,dfa,minDfa] [--benchmark] [--benchmark-iterations N] [regex] [length]"
             );
         }
 
@@ -71,6 +94,8 @@ static class CommandLine
             Regex = regex,
             Length = length,
             DrawTargets = drawTargets,
+            Benchmark = benchmark,
+            BenchmarkIterations = benchmarkIterations,
         };
     }
 }
